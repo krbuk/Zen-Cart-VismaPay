@@ -14,8 +14,8 @@ require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.
 class vismapay
 {
 	var $code, $title, $description, $enabled, $sort_order;
-	public $moduleVersion = '1.0.0';
-	protected $VismaPayApiVersion = 'w3.1';	
+	public $moduleVersion = '1.1.0';
+	protected $VismaPayApiVersion = 'w3.2';	
 	
 	function __construct()	
 	{
@@ -243,7 +243,7 @@ class vismapay
                     'id' => $item['id'],
                     'count' => floatval($item['qty']),
                     'pretax_price' => intval($item_final_price),
-                    'tax' => round(floatval($item_tax)),
+                    'tax' => floatval($item_tax),
 					'price' => intval($item_price),
                     'type' => 1,
                 ));
@@ -271,7 +271,7 @@ class vismapay
                 'id' =>  $order->info['shipping_module_code'],
                 'count' => 1,
                 'price' => intval($shipping_price),
-                'tax' =>  round(floatval($shipping_tax)),
+                'tax' =>  floatval($shipping_tax),
                 'pretax_price' => intval($shipping_pretax_price),
                 'type' => 2,
             ));	
@@ -302,7 +302,7 @@ class vismapay
 						'id' => '',
 						'count' => 1,
 						'price' => $loworderpretax_price,
-						'tax' => round(floatval($loworder_tax_rate)),
+						'tax' => floatval($loworder_tax_rate),
 						'pretax_price' => $loworderpretax_price,
 						'type' => 1,
 					));
@@ -478,7 +478,7 @@ class vismapay
 					'id' => '',
 					'count' => 1,
 					'price' => $E_shipping_price,
-					'tax' => round(floatval($E_shipping_tax)),
+					'tax' => floatval($E_shipping_tax),
 					'pretax_price' => $E_shipping_price,
 					'type' => 2,
 				));	
@@ -571,7 +571,7 @@ class vismapay
 						'title' => htmlspecialchars($product['title']),
 						'count' => $product['count'],
 						'pretax_price' => $product['pretax_price'],
-						'tax' => $product['tax'],
+						'tax' => floatval($product['tax']),
 						'price' => $product['price'],
 						'type' => $product['type']
 					)
