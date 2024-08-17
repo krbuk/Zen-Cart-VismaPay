@@ -14,7 +14,7 @@ require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.
 class vismapay
 {
 	var $code, $title, $description, $enabled, $sort_order;
-	public $moduleVersion = '1.1.0';
+	public $moduleVersion = '1.1.2';
 	protected $VismaPayApiVersion = 'w3.2';	
 	
 	function __construct()	
