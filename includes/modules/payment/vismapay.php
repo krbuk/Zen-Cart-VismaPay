@@ -10,6 +10,7 @@
  * @version $Id: Nida Verkkopalvelu (www.nida.fi) / krbuk 2024 Dec 1 Modified in module 2.7.0
  */
 require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.php';
+<<<<<<< HEAD
 
   class vismapay { 
     /**
@@ -106,6 +107,15 @@ require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.
     protected $VismaPayApiVersion = 'w3.2';	  
 
 // class constructor
+=======
+	
+class vismapay
+{
+	var $code, $title, $description, $enabled, $sort_order;
+	public $moduleVersion = '1.1.2';
+	protected $VismaPayApiVersion = 'w3.2';	
+	
+>>>>>>> 5251b3151aba0779928deb5a790aa5781f3dbf64
 	function __construct()	
 	{
         global $order;	
@@ -1309,4 +1319,9 @@ require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.
 		return;
 	}	
 } // end class vismapay
+<<<<<<< HEAD
 ?>
+=======
+// This is Visma Pay Checkout Finland module signature
+?>
+>>>>>>> 5251b3151aba0779928deb5a790aa5781f3dbf64
