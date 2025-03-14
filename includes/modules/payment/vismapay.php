@@ -2,56 +2,135 @@
 /**
  * www.visma.fi (Visma Oy)
  *
- * REQUIRES PHP 7.2
+ * REQUIRES PHP 7.4
  * 
  * @package VismaPay
  * @copyright Copyright 2003-2019 Zen Cart Development Team
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version $Id: Nida Verkkopalvelu (www.nida.fi) / krbuk 2021 Jun 1 Modified in v1.5.7c $
+ * @version $Id: Nida Verkkopalvelu (www.nida.fi) / krbuk 2024 Dec 1 Modified in module 2.7.0
  */
 require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.php';
-	
-class vismapay
-{
-	var $code, $title, $description, $enabled, $sort_order;
-	public $moduleVersion = '1.1.0';
-	protected $VismaPayApiVersion = 'w3.2';	
-	
+
+  class vismapay { 
+    /**
+     * $_check is used to check the configuration key set up
+     * @var int
+     */
+    protected $_check;
+    /**
+     * $code determines the internal 'code' name used to designate "this" payment module
+     * @var string
+     */
+    public $code;
+    /**
+     * $description is a soft name for this payment method
+     * @var string 
+     */
+    public $description;
+    /**
+     * $enabled determines whether this module shows or not... during checkout.
+     * @var boolean
+     */
+    public $enabled;
+    /**
+     * $order_status is the order status to set after processing the payment
+     * @var int
+     */
+    public $order_status;
+    /**
+     * $title is the displayed name for this order total method
+     * @var string
+     */
+    public $title;
+    /**
+     * $sort_order is the order priority of this payment module when displayed
+     * @var int
+     */
+    public $sort_order;
+    /**
+     * $api_key is the merchant api key
+     * @var int
+     */	  
+	public $api_key;
+    /**
+     * $private_key is the merchant private key
+     * @var int
+     */	 	  
+	public $private_key;
+    /**
+     * $return_address 
+     * @var int
+     */	  
+	public $return_address;
+    /**
+     * $return_address 
+     * @var int
+     */		  
+	public $cancel_address; 
+    /**
+     * $currency is the valid VismaPay currency to use default EUR
+     * @var string
+     */	  
+    public $currency;	
+	public $language;
+	public $banks;
+	public $wallets;
+	public $ccards;
+	public $cinvoices;
+	public $laskuyritykselle;
+	public $send_receipt;
+	public $send_items;
+	public $ordernumber_prefix;
+	public $embed;
+	public $payment_description; 
+	public $order_number;
+    /**
+    * $form_action_url is the URL to process the payment or not set for local processing
+    * @var string
+    */  
+	public $form_action_url ;
+    /**
+     * $moduleVersion is the version of this module
+     * @var string
+     */	  
+	public $moduleVersion = '2.7.0';
+    /**
+     * $allowed_currencies is allowed only EUR
+     * @var string
+     */	  
+	private $allowed_currencies = array('EUR'); 
+    /**
+     * Platform name for the API.
+     * @var string
+     */
+    protected $VismaPayApiVersion = 'w3.2';	  
+
+// class constructor
 	function __construct()	
 	{
         global $order;	
 		$this->code = 'vismapay';
 		$this->title = defined('MODULE_PAYMENT_VISMAPAY_TEXT_TITLE') ? MODULE_PAYMENT_VISMAPAY_TEXT_TITLE : null;	
 		$this->description = '<strong>Visma Pay Payment API -v ' .$this->VismaPayApiVersion  .' integration for <br> Zen-Cart Module -v '.$this->moduleVersion .'</strong><br><br>' .MODULE_PAYMENT_VISMAPAY_TEXT_DESCRIPTION;
-		$this->enabled  = (defined('MODULE_PAYMENT_VISMAPAY_STATUS') && MODULE_PAYMENT_VISMAPAY_STATUS == 'Kyllä') ? true : false;		
+		$this->enabled  = (defined('MODULE_PAYMENT_VISMAPAY_STATUS') && MODULE_PAYMENT_VISMAPAY_STATUS == 'Kyllä') ? true : false;
 		$this->sort_order = defined('MODULE_PAYMENT_VISMAPAY_SORT_ORDER') ? MODULE_PAYMENT_VISMAPAY_SORT_ORDER : null;
-		
 		$this->api_key = defined('MODULE_PAYMENT_VISMAPAY_VP_API_KEY') ? MODULE_PAYMENT_VISMAPAY_VP_API_KEY : null;
 		$this->private_key = defined('MODULE_PAYMENT_VISMAPAY_VP_PRIVATE_KEY') ? MODULE_PAYMENT_VISMAPAY_VP_PRIVATE_KEY : null;
-		
 		$this->return_address = zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL');
 		$this->cancel_address = zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL');
-		
-		$this->currency = $order->info['currency'];			
 		$this->language = ($_SESSION['languages_code'] == 'fi') ? 'fi' : 'en';
 		$this->order_status = defined('MODULE_PAYMENT_VISMAPAY_ORDER_STATUS_ID_SETTLED') ? MODULE_PAYMENT_VISMAPAY_ORDER_STATUS_ID_SETTLED : null;	
-		
 		$this->banks = defined('MODULE_PAYMENT_VISMAPAY_BANKS') ? MODULE_PAYMENT_VISMAPAY_BANKS : null;
 		$this->wallets = defined('MODULE_PAYMENT_VISMAPAY_WALLETS') ? MODULE_PAYMENT_VISMAPAY_WALLETS : null;
 		$this->ccards = defined('MODULE_PAYMENT_VISMAPAY_CCARDS') ? MODULE_PAYMENT_VISMAPAY_CCARDS : null;
 		$this->cinvoices = defined('MODULE_PAYMENT_VISMAPAY_CINVOICES') ? MODULE_PAYMENT_VISMAPAY_CINVOICES : null;
 		$this->laskuyritykselle = defined('MODULE_PAYMENT_VISMAPAY_LASKUYRITYKSELLE') ? MODULE_PAYMENT_VISMAPAY_LASKUYRITYKSELLE : null;		
-
 		$this->send_receipt = defined('MODULE_PAYMENT_VISMAPAY_SEND_CONFIRMATION') ? MODULE_PAYMENT_VISMAPAY_SEND_CONFIRMATION : null;
 		$this->send_items = defined('MODULE_PAYMENT_VISMAPAY_SEND_ITEMS') ? MODULE_PAYMENT_VISMAPAY_SEND_ITEMS : null;
 		$this->ordernumber_prefix = defined('MODULE_PAYMENT_VISMAPAY_ORDERNUMBER_PREFIX') ? MODULE_PAYMENT_VISMAPAY_ORDERNUMBER_PREFIX : null;
-		
 		$this->embed = defined('MODULE_PAYMENT_VISMAPAY_EMBEDDED') ? MODULE_PAYMENT_VISMAPAY_EMBEDDED : null;
-		
 		$this->payment_description = MODULE_PAYMENT_PAYMENT_DESCRIPTION;
 		$this->allowed_currencies = array('EUR');		
-		
-		define ('MODULE_PAYMENT_VISMAPAY_ORDER_STATUS_ID_AUTHORIZED','1');
 		
 		if (null === $this->sort_order) return false;	
 		if (IS_ADMIN_FLAG === true && (MODULE_PAYMENT_VISMAPAY_VP_API_KEY == 'TESTAPIKEY')) $this->title .= '<span class="alert">' .MODULE_PAYMENT_VISMAPAY_ALERT_TEST .'</span>';
@@ -66,24 +145,31 @@ class vismapay
  
 	}// end function __construct
 	
-    function update_status()
-    {
-		global $order; $zones_to_geo_zones; 
-		//Only EUR orders accepted
-		$currency = $order->info['currency'];
-		if(!(in_array($currency, $this->allowed_currencies)))
-			$this->enabled = false;
-    }// end	function update_status
+    function update_status() {
+      global $order, $db;
+	  // disable the module if the order only contains euro
+      if ($this->enabled == true) 
+      {
+        //Only EUR orders accepted
+		$this->currency = $order->info['currency'];  
+        if(!(in_array($this->currency, $this->allowed_currencies))) $this->enabled = false;
+      }
+
+      // other status checks?
+      if ($this->enabled) {
+        // other checks here
+      }
+    }
 	
 	function javascript_validation()
 	{
 		
 	}// end	function javascript_validation
 
-	function selection()
-	{
-		return array('id' => $this->code, 'module' => $this->title);
-	}// end function selection
+    function selection() {
+      return array('id' => $this->code,
+                   'module' => $this->title);
+    }
 
 	function pre_confirmation_check()
 	{
@@ -109,16 +195,6 @@ class vismapay
 	function process_button()
 	{
 		global $order, $currencies, $db, $order_totals;
-		
-		// Version
-		$version = $this->VismaPayApiVersio;
-		// Keys
-		$api_key = $this->api_key;
-		$private_key = $this->private_key;
-		
-		$return_url = $this->return_address;
-		$notify_url = $this->cancel_address;
-		
 		// Order amount
 		$amount = number_format($order->info['total'], 2, '.', '')*100;
 		
@@ -130,46 +206,43 @@ class vismapay
 			$order_number = $this->ordernumber_prefix.'_'.$generate_order_number;
 		}	
 		else
-		{
-			$order_number = $generate_order_number;		
-		}	
+			{
+				$order_number = $generate_order_number;		
+			}	
 		$this->order_number = $order_number;	
 		
-		$finn_langs = array('fi-FI', 'fi', 'fi_FI');
-		$sv_langs = array('sv-SE', 'sv', 'sv_SE');
+		$finn_langs 	= array('fi-FI', 'fi', 'fi_FI');
+		$sv_langs 		= array('sv-SE', 'sv', 'sv_SE');
 		$current_locale = $this->language;
 		
 		if(in_array($current_locale, $finn_langs))
 		{
 			$lang = 'fi';
 		}	
-		else if (in_array($current_locale, $sv_langs))
-		{
-			$lang = 'sv';
-		}
+			else if (in_array($current_locale, $sv_langs))
+			{
+				$lang = 'sv';
+			}
 		else
-		{	
-			$lang = 'en';
-		}
-
+			{	
+				$lang = 'en';
+			}
 		// ********************************
 		// Visma Pay Gatway
 		// ********************************			
 		$authcode = strtoupper(hash_hmac('sha256', $order_number, $this->private_key));
-
-		$client = new VismaPay\VismaPay($api_key, $private_key);
+		$client = new VismaPay\VismaPay($this->api_key, $this->private_key);
 		
 		if($this->send_receipt == 'Enabled') 
 		{
 			$email = htmlspecialchars($order->customer['email_address']);
 		}	
 		else 
-		{
-			$email = null;
-		}
+			{
+				$email = null;
+			}
 		
-		$client->addCharge(
-			array(
+		$client->addCharge(array(
 			'order_number' => $order_number,
 			'amount' => $amount, 
 			'currency' => $this->currency,
@@ -186,8 +259,7 @@ class vismapay
 			$order->delivery['country']['iso_code_2'] = $order->billing['country']['iso_code_2'];
 		}
 		
-		$client->addCustomer(
-			array(
+		$client->addCustomer(array(
 			'firstname' => htmlspecialchars($order->customer['firstname']), 
 			'lastname' => htmlspecialchars($order->customer['lastname']), 
 			'email' => htmlspecialchars($order->customer['email_address']), 
@@ -210,15 +282,17 @@ class vismapay
 		$order_subtotal  = zen_round($order->info['subtotal'], 2);
 		
 		//Variable to compare product calculation to total amount of the order		
-		$total_check = 0;
-		
+		$total_check	= 0;
+		$itemqyt		= 0;
+
 		// Array order items, tax  and price
         $products = array();
 		
 		//Add products to product breakdown
 		$order_items = $order->products;
 		
-        foreach ($order_items as $key => $item) {
+        foreach ($order_items as $key => $item) 
+		{
 			$item_final_price = number_format($item['final_price'], 2, '.', '')*100;	
 			//$item_final_price = $item['final_price'] *100 ;
 			$item_tax = $item['tax'];
@@ -227,57 +301,67 @@ class vismapay
 
             if ($order_subtotal == 0) {
                 array_push($products, array(
-                    'title' => $item['name'],
-                    'id' => $item['id'],
-                    'count' => floatval($item['qty']),
-                    'pretax_price' => 0,
-                    'tax' => 0,
-					'price' => 0,
-                    'type' => 1,
+                    'title' 		=> $item['name'],
+                    'id' 			=> $item['id'],
+                    'count' 		=> floatval($item['qty']),
+                    'pretax_price'	=> 0,
+                    'tax' 			=> 0,
+					'price' 		=> 0,
+                    'type' 			=> 1,
                 ));
 				$total_check  +=  $item_price * $item['qty'];
             } 
-			else {
-                array_push($products, array(
-                    'title' => $item['name'],
-                    'id' => $item['id'],
-                    'count' => floatval($item['qty']),
-                    'pretax_price' => intval($item_final_price),
-                    'tax' => floatval($item_tax),
-					'price' => intval($item_price),
-                    'type' => 1,
-                ));
-				$total_check  +=  $item_price * $item['qty'];
-            }
-						
+			else 
+				{
+					array_push($products, array(
+						'title' 		=> $item['name'],
+						'id' 			=> $item['id'],
+						'count'			=> floatval($item['qty']),
+						'pretax_price'	=> intval($item_final_price),
+						'tax' 			=> $item_tax,
+						'price' 		=> intval($item_price),
+						'type' 			=> 1,
+					));
+					$total_check  +=  $item_price * $item['qty'];
+            	}
         }
 		
-		//Add shipping to product breakdown
-		$shipping_price = number_format($order->info['shipping_cost'], 2, '.', '')*100;
-		$shipping_tax_total = number_format($order->info['shipping_tax'], 2, '.', '')*100;
-		$shipping_pretax_price = $shipping_price - $shipping_tax_total;
+	  //Add shipping to product breakdown
+		$shipping_price 		= number_format($order->info['shipping_cost'], 2, '.', '')*100;
+		$shipping_tax_total 	= number_format($order->info['shipping_tax'], 2, '.', '')*100;
+		$shipping_pretax_price	= $shipping_price - $shipping_tax_total;	
 
-	 	if (DISPLAY_PRICE_WITH_TAX == 'true') {
-			$shipping_price = $shipping_price;
-	 	} 
+	  if (($shipping_price - $shipping_tax_total) != 0) 
+	  {
+		  $shipping_tax	  = ($shipping_tax_total / ($shipping_price - $shipping_tax_total)) * 100;
+		  $shipping_qty   = 1; 
+	  } 
 		else {
+				// Handle the case where the denominator is zero
+				$shipping_tax = 0; // or another appropriate value or error handling
+		  		$shipping_qty = 1;
+	  		 }			
+		
+	  if (DISPLAY_PRICE_WITH_TAX == 'true') 
+	  {
+		$shipping_price = $shipping_price;
+	  } 
+	  else 
+		  {
 			$shipping_price = $shipping_price + $shipping_tax_total;
-	 	}		
-
-	 	if($shipping_pretax_price > 0 ){
-			$shipping_tax = ($shipping_tax_total/($shipping_price - $shipping_tax_total))*100;				
+		  }
+		  $shipping_tax = number_format($shipping_tax, 1, '.', ''); 
            array_push($products, array(
-                'title' => $order->info['shipping_method'], 
-                'id' =>  $order->info['shipping_module_code'],
-                'count' => 1,
-                'price' => intval($shipping_price),
-                'tax' =>  floatval($shipping_tax),
-                'pretax_price' => intval($shipping_pretax_price),
-                'type' => 2,
+                'title' 		=> $order->info['shipping_method'], 
+                'id' 			=> $order->info['shipping_module_code'],
+                'count' 		=> $shipping_qty,
+                'price' 		=> intval($shipping_price),
+                'tax' 			=> $shipping_tax,
+                'pretax_price'	=> intval($shipping_pretax_price),
+                'type' 			=> 2,
             ));	
-		$total_check += $shipping_price; 	
-		}
-
+		$total_check += $shipping_price; 		
+		
 		// Add loworderfee breakdown
 		// Check if there is a group discount enabled
 		foreach ($order_totals as $o_total)
@@ -298,13 +382,13 @@ class vismapay
 						$loworderpretax_price =  ($loworder_price_format / ($loworder_tax_rate/100+1)) * 100;
 					}
 					array_push($products, array(
-						'title' => MODULE_PAYMENT_VISMAPAY_LOWORDER_TEXT,
-						'id' => '',
-						'count' => 1,
-						'price' => $loworderpretax_price,
-						'tax' => floatval($loworder_tax_rate),
-						'pretax_price' => $loworderpretax_price,
-						'type' => 1,
+						'title' 		=> MODULE_PAYMENT_VISMAPAY_LOWORDER_TEXT,
+						'id' 			=> '',
+						'count' 		=> 1,
+						'price' 		=> $loworderpretax_price,
+						'tax' 			=> $loworder_tax_rate,
+						'pretax_price'	=> $loworderpretax_price,
+						'type' 			=> 1,
 					));
 					$total_check += $loworderpretax_price;
 
@@ -329,17 +413,18 @@ class vismapay
 					{
 						$group_amount = round(floatval($group_amount_format));
 					}
-					else {
-						$group_amount = round(floatval($group_amount_format + $order_total_sub_total));
-					}				
+					else 
+						{
+							$group_amount = round(floatval($group_amount_format + $order_total_sub_total));
+						}				
 					array_push($products, array(
-						'title' => MODULE_PAYMENT_VISMAPAY_GROUP_TEXT,
-						'id' => '',
-						'count' => 1, // -1
-						'price' => -intval($group_amount),
-						'tax' => 0,
-						'pretax_price' => intval($group_amount),
-						'type' => 4,
+						'title' 		=> MODULE_PAYMENT_VISMAPAY_GROUP_TEXT,
+						'id' 			=> '',
+						'count' 		=> 1,
+						'price' 		=> -intval($group_amount),
+						'tax' 			=> 0,
+						'pretax_price'	=> intval($group_amount),
+						'type' 			=> 4,
 					));			
 					$total_check -= $group_amount;
 				}
@@ -399,6 +484,11 @@ class vismapay
 			$coupon_code     = $coupon->fields['coupon_code'];
 			$coupon_amount_formatted = number_format($coupon_amount, 2, '.', '');
 			$coupon_shipping_tax = zen_round($shipping_tax, $decimals) * 100 ;
+			if (isset($discount_amount_shipping)) {
+				$discount_amount_shipping = $o_total['value'];
+			} else {
+				$discount_amount_shipping = 0;
+			}		
 			$coupon_amount_shipping = $discount_amount_shipping * 100;
 			
 			if (DISPLAY_PRICE_WITH_TAX == 'true') {
@@ -437,19 +527,20 @@ class vismapay
 						$coupon_result = ($coupon_amount_formatted + $discount_amount_shipping) * 100;
 					}
 				array_push($products, array(
-					'title' => MODULE_PAYMENT_VISMAPAY_FREE_SHPING,
-					'id' => '',
-					'count' => 1,
-					'price' => $O_shippingprice,
-					'tax' => 0,
-					'pretax_price' => $O_shippingprice,
-					'type' => 2,
+					'title' 		=> MODULE_PAYMENT_VISMAPAY_FREE_SHPING,
+					'id' 			=> '',
+					'count' 		=> 1,
+					'price' 		=> $O_shippingprice,
+					'tax' 			=> 0,
+					'pretax_price'	=> $O_shippingprice,
+					'type' 			=> 2,
 				));	
 				$total_check += $O_shippingprice;
 				break;	
 				// percentage	
 				case 'P': 
-					 if($shippingcost > 0 ){
+					 if($shippingcost > 0 )
+					 {
 						// Coupon cost
 						$coupon_cost = ($order_subtotal/100)*($coupon_amount);
 						// add shiping cost and shping tax
@@ -457,11 +548,11 @@ class vismapay
 						$coupon_result =  ($coupon_cost + $coupon_shiping_tax) ;
 						$coupon_result = zen_round($coupon_result, $decimals) * 100;
 					}	
-					    
-					else {
-						$coupon_result = ($order_subtotal/100)*($coupon_amount_formatted);
-						$coupon_result = zen_round($coupon_result, $decimals) * 100;
-					}
+					else 
+						{
+							$coupon_result = ($order_subtotal/100)*($coupon_amount_formatted);
+							$coupon_result = zen_round($coupon_result, $decimals) * 100;
+						}
 				break;
 				// percentage and Free Shipping
 				case 'E': 
@@ -474,26 +565,26 @@ class vismapay
 						$coupon_result = zen_round($coupon_result, $decimals) * 100;
 					
 				array_push($products, array(
-					'title' => MODULE_PAYMENT_VISMAPAY_FREE_SHPING,
-					'id' => '',
-					'count' => 1,
-					'price' => $E_shipping_price,
-					'tax' => floatval($E_shipping_tax),
-					'pretax_price' => $E_shipping_price,
-					'type' => 2,
+					'title' 		=> MODULE_PAYMENT_VISMAPAY_FREE_SHPING,
+					'id' 			=> '',
+					'count' 		=> 1,
+					'price' 		=> $E_shipping_price,
+					'tax' 			=> $E_shipping_tax,
+					'pretax_price'	=> $E_shipping_price,
+					'type' 			=> 2,
 				));	
 				$total_check += $E_shipping_price;
 				break;				
 			}// end switch
 			
             array_push($products, array(
-                'title' => MODULE_PAYMENT_VISMAPAY_COUPON_TEXT,
-                'id' => $coupon_code,
-                'count' => 1, // -1
-                'price' => -$coupon_result,
-				'tax' => 0,
-                'pretax_price' => $coupon_result,
-                'type' => 4,
+                'title' 		=> MODULE_PAYMENT_VISMAPAY_COUPON_TEXT,
+                'id' 			=> $coupon_code,
+                'count' 		=> 1,
+                'price'			=> -$coupon_result,
+				'tax' 			=> 0,
+                'pretax_price'	=> $coupon_result,
+                'type' 			=> 4,
             ));
 			$total_check -= $coupon_result;
         }
@@ -511,36 +602,45 @@ class vismapay
 			
 			// if tax is to be calculated on purchased GVs, calculate it
             array_push($products, array(
-                'title' => MODULE_PAYMENT_VISMAPAY_GIFT_TEXT,
-                'id' => '',
-                'count' => 1,
-                'price' => -$gv_amount,
- 				'tax' => 0,
-                'pretax_price' => $gv_amount,
-                'type' => 4,
+                'title' 		=> MODULE_PAYMENT_VISMAPAY_GIFT_TEXT,
+                'id' 			=> '',
+                'count' 		=> 1,
+                'price' 		=> -$gv_amount,
+ 				'tax' 			=> 0,
+                'pretax_price'	=> $gv_amount,
+                'type' 			=> 4,
             ));			
 			$total_check -= $gv_amount;
 
         }
-
-        // Add reward points breakdown
-		if ($_SESSION['redeem_value'] > 0) {
-			$redem_value = number_format($_SESSION['redeem_value'], 2, '.', '') * 100;
+		
+	    // Add reward points breakdown
+		
+	    if (array_key_exists('redeem_points', $_SESSION)) {
+		    $redeemPoints = $_SESSION['redeem_points'];
+	    } else {
+		    $redeemPoints = 0; // Reward Point not aktif
+	    }	
+		
+	    if ($redeemPoints > 0) 
+	    {	
+			$redem_value = number_format($redeemPoints, 2, '.', '') * 100;
 			// if tax is to be calculated on purchased GVs, calculate it
-            array_push($products, array(
-                'title' => MODULE_PAYMENT_VISMAPAY_REWARD_POINT_TEXT,
-                'id' => '',
-                'count' => 1, // -1
-                'price' => -$redem_value,
- 				'tax' => 0,
-                'pretax_price' => $redem_value,
-                'type' => 4,
-            ));			
-			$total_check -= $redem_value;
-        }		
+			array_push($products, array(
+				'title' 		=> MODULE_PAYMENT_VISMAPAY_REWARD_POINT_TEXT,
+				'id' 			=> '',
+				'count' 		=> 1,
+				'price' 		=> -$redem_value,
+				'tax' 			=> 0,
+				'pretax_price'	=> $redem_value,
+				'type' 			=> 4,
+			));			
+			$total_check -= $redem_value;			
+		}			
 
 		// Add sumround breakdown
-		if ($amount <> $total_check)  {
+		if ($amount <> $total_check)  
+		{
 			if ($amount > $total_check)  {
 				$sum_round_count = $amount - $total_check;
 				$plsmin = '+';
@@ -551,13 +651,13 @@ class vismapay
 		    }
 			$sum_round = round(floatval($sum_round_count));
 			array_push($products, array(
-                'title' => MODULE_PAYMENT_VISMAPAY_SUM_ROUND,
-                'id' => '',
-                'count' => 1,
-                'price' => $plsmin .$sum_round,
-				'tax' => 0,
-                'pretax_price' => $plsmin .$sum_round,
-                'type' => 1,
+                'title' 		=> MODULE_PAYMENT_VISMAPAY_SUM_ROUND,
+                'id' 			=> '',
+                'count' 		=> 1,
+                'price' 		=> $plsmin .$sum_round,
+				'tax' 			=> 0,
+                'pretax_price'	=> $plsmin .$sum_round,
+                'type' 			=> 1,
             ));
 		}
 
@@ -566,25 +666,23 @@ class vismapay
 			foreach($products as $product)
 			{
 				$client->addProduct(
-					array(
-						'id' => htmlspecialchars($product['id']),
-						'title' => htmlspecialchars($product['title']),
-						'count' => $product['count'],
-						'pretax_price' => $product['pretax_price'],
-						'tax' => floatval($product['tax']),
-						'price' => $product['price'],
-						'type' => $product['type']
+					array('id' 			=> $product['id'],
+						  'title' 		=> htmlspecialchars($product['title']),
+						  'count' 		=> $product['count'],
+						  'pretax_price'=> $product['pretax_price'],
+						  'tax' 		=> $product['tax'],
+						  'price' 		=> $product['price'],
+						  'type' 		=> $product['type']
 					)
 				);
 			}
 		}
 		/**
 		*** Check amount and total sum ***
-		*   echo 'amount '.$amount .'<br>' .'total_check ' .$total_check  .'<br>' .'sum round ' .$sum_round  .'<br>';
+		*   echo 'amount: '.$amount .'<br>' .'total_check: ' .$total_check  .'<br>' .'sum round: ' .$sum_round  .'<br>';
 		*/
 		
 		$vp_selected = '';
-		
 		if($this->embed == '1' || $this->embed == '2')
 			{
 			$vp_selected = array($visma_pay_selected);
@@ -594,16 +692,16 @@ class vismapay
 				$vp_selected = array();
 				if($this->currency)
 					{
-					if($this->banks == 'Enabled') 			$vp_selected[] = 'banks';
-					if($this->wallets == 'Enabled')			$vp_selected[] = 'wallets';
-					if($this->ccards == 'Enabled')			$vp_selected[] = 'creditcards';
-					if($this->cinvoices == 'Enabled')		$vp_selected[] = 'creditinvoices';
-					if($this->laskuyritykselle == 'Enabled')$vp_selected[] = 'laskuyritykselle';
+						if($this->banks 			== 'Enabled') $vp_selected[] = 'banks';
+						if($this->wallets 			== 'Enabled') $vp_selected[] = 'wallets';
+						if($this->ccards 			== 'Enabled') $vp_selected[] = 'creditcards';
+						if($this->cinvoices 		== 'Enabled') $vp_selected[] = 'creditinvoices';
+						if($this->laskuyritykselle	== 'Enabled') $vp_selected[] = 'laskuyritykselle';
 					}
 				else if($this->currency == 'null') 
 				{
-				$creditcards = $banks = $creditinvoices = $wallets = '';
-				$payment_methods = new VismaPay\VismaPay($this->api_key, $this->private_key);
+					$creditcards = $banks = $creditinvoices = $wallets = '';
+					$payment_methods = new VismaPay\VismaPay($this->api_key, $this->private_key);
 				try
 				{
 				  $response = $payment_methods->getMerchantPaymentMethods($this->currency);
@@ -658,8 +756,7 @@ class vismapay
 					}
 					else
 					{
-						if (!empty($this->payment_description))
-							  echo $this->payment_description;
+						if (!empty($this->payment_description)) echo $this->payment_description;
 					}						
 				}
 			}
@@ -677,11 +774,11 @@ class vismapay
 	
 	$client->addPaymentMethod(
 		array(
-			'type' => 'e-payment', 
-			'return_url' => $return_url,
-			'notify_url' => $return_url,
-			'lang' => $lang,
-			'selected' => $vp_selected,
+			'type' 				=> 'e-payment', 
+			'return_url' 		=> $this->return_address,
+			'notify_url' 		=> $this->return_address,
+			'lang' 				=> $lang,
+			'selected' 			=> $vp_selected,
 			'token_valid_until' => strtotime('+1 hour')
 			));	
 		
@@ -729,50 +826,93 @@ class vismapay
 			$result = $e->getCode();
 			$message = $e->getMessage();
 			if($result == 2)
-				echo '<br> Visma Pay exception 2: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 3, null, null, null, true;
+				echo '<br> Visma Pay exception 2: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 2, null, null, null, true;
 			elseif($result == 3)
 				echo '<br> Visma Pay exception 3: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 3, null, null, null, true;
 			elseif($result == 4)
-				echo '<br> Visma Pay exception 4: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 3, null, null, null, true;
+				echo '<br> Visma Pay exception 4: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 4, null, null, null, true;
 			elseif($result == 5)
-				echo '<br> Visma Pay exception 5: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 3, null, null, null, true;
-		
+				echo '<br> Visma Pay exception 5: ' . $message . ',' .MODULE_PAYMENT_VISMAPAY_ORDER_NUMBER .$order_number, 5, null, null, null, true;
 				echo "Unexpected HTTP status code: {$e->getCode()}\n\n";
-				echo "<a href='index.php?main_page=contact_us' title='" .MODULE_PAYMENT_VISMAPAY_PAYMENT_ERROR ."' target='_blank'><strong>" .MODULE_PAYMENT_VISMAPAY_PAYMENT_ERROR ." => " .STORE_TELEPHONE_CUSTSERVICE. "</strong></a>";			
-			
+                echo "<div style='color:red'>" .MODULE_PAYMENT_VISMAPAY_PAYMENT_ERROR;
+                echo "<br><strong>" .MODULE_PAYMENT_VISMAPAY_SELECET_OTHER  ."</strong><br>";
+                echo "<button type='button' class='btn btn-outline-danger'>" .zen_back_link() . zen_image_button(BUTTON_IMAGE_BACK, BUTTON_BACK_ALT) . "</a></button></div>";			
 			return;			
 		}		
 	
 		/**   
 		*  NIDA VERKKOPALVELU
 		*  Error control.  " // " and check to sending request data.
-		*
-		* echo 'AUTHCODE : ' .$authcode  .'<br>';
-		* echo 'TOKEN : ' .$response->token  .'<br>';
-		* echo(json_encode(json_decode($body), JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
-		* var_dump(json_decode($body, true));	
-		* echo '<pre>'; print_r(json_decode($body,true)); exit;
 		*/
+		// echo 'AUTHCODE : ' .$authcode  .'<br>';
+		// echo 'TOKEN : ' .$response->token  .'<br>';
+		// echo(json_encode(json_decode($body), JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
+		// var_dump(json_decode($body, true));	
+		// echo '<pre>'; print_r(json_decode($body,true)); exit;
 		
 		// Starting active payment icon
 		$html  = "</form>\n";
 		$html .='<style>
-		/* Visma Pay */
-		#btn_submit, 
-		.buttonRow   { display: none; } /*Submit button hidden */
-		.btn-success { display: none; } /*Submit button hidden */		
-		</style>';
-		
-		$html .= '
-		<script>
-
-		</script>		
-		';			
+				/* Visma Pay */
+				#btn_submit, 
+				.buttonRow   { display: none; } /*Submit button hidden */
+				.btn-success { display: none; } /*Submit button hidden */
+				.button {
+				    width: auto;
+					height: 40px;
+					display: inline-block;
+					zoom: 1; /* zoom and *display = ie7 hack for display:inline-block */
+					*display: inline;
+					vertical-align: baseline;
+					margin: 0 2px;
+					outline: none;
+					cursor: pointer;
+					text-align: center;
+					text-decoration: none;
+					font: 16px/100% Arial, Helvetica, sans-serif;
+					padding: .5em 2em .55em;
+					text-shadow: 0 1px 1px rgba(0,0,0,.3);
+					-webkit-border-radius: .5em; 
+					-moz-border-radius: .5em;
+					border-radius: .5em;
+					-webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+					-moz-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+					box-shadow: 0 1px 2px rgba(0,0,0,.2);
+				}
+				.button:hover {
+					text-decoration: none;
+				}
+				/* green */
+				.green {
+					color: #e8f0de;
+					border: solid 1px #538312;
+					background: #64991e;
+					background: -webkit-gradient(linear, left top, left bottom, from(#7db72f), to(#4e7d0e));
+					background: -moz-linear-gradient(top,  #7db72f,  #4e7d0e);
+				}
+				.green:hover {
+					background: #538018;
+					background: -webkit-gradient(linear, left top, left bottom, from(#6b9d28), to(#436b0c));
+					background: -moz-linear-gradient(top,  #6b9d28,  #436b0c);
+				}
+				</style>';
+		$html .= '<script>		</script>';			
 		
 		if ($this->embed == '0') 
 		{
+			$action_button = BUTTON_CONFIRM_ORDER_ALT;
 			$html .= '<form action="' .$this->form_action_url .'" method="POST">';		
-			$html .= '<div><input type="submit" class="btn" value="'.TEXT_CONTINUE_CHECKOUT_PROCEDURE .'" /></div>';
+			$html .= '<div><button type="submit" class="button green">' .$action_button .'</button></div>';
+
+//			// Vismapay submit button
+//			$action_button = BUTTON_CONFIRM_ORDER_ALT;
+//    		$instruction_title = TITLE_CONTINUE_CHECKOUT_PROCEDURE;
+//    		$instruction_text = TEXT_CONTINUE_CHECKOUT_PROCEDURE;
+//			$html .= '<div class="hstack gap-2">';
+//			$html .= '  <div class="p-2 ms-auto"><br><strong>' . $instruction_title . '</strong>' . $instruction_text .'</div>';
+//			$html .= '  <div class="vr"></div>';
+//			$html .= '  <div class="p-2"><button type="submit" class="btn btn-success btn-sm">' .$action_button .'</button></div>';
+//			$html .= '</div>';
 			$html .= '</form>';
 		}
 		
@@ -812,12 +952,8 @@ class vismapay
 				return;	
 			}
 
-		$html .= '<h2>' .'VALITSE </h2><br>
-		hallintapanelinkautta Modulit->Maksumodulit->VismaPay<br>
-		<strong>Upotus</strong> valitse 0 Pois käytöstä:<br>';
+		$html .= MODULE_PAYMENT_VISMAPAY_IMMERSION;
 	} // end $this->embed == '1'			
-
-		
 	return $html;
 } // end function process_button
 
@@ -833,7 +969,6 @@ class vismapay
 		$authcode = isset($_GET['AUTHCODE']) ? $_GET['AUTHCODE'] : null;
 		$contact_id = isset($_GET['CONTACT_ID']) ? $_GET['CONTACT_ID'] : null;
 		$order_number = isset($_GET['ORDER_NUMBER']) ? $_GET['ORDER_NUMBER'] : null;
-
 		$authcode_confirm = $return_code .'|'. $order_number;
 
 		if(isset($return_code) && $return_code == 0)
@@ -853,13 +988,14 @@ class vismapay
 		if($authcode_confirm == $authcode)
 		{
 			$client = new VismaPay\VismaPay($this->api_key, $this->private_key);
-			$threedsmsg = '';
-			$error_message = '';
-			$card_country = '';
-			$client_country = '';
-			$card_message = '';
+			$threedsmsg 	= '';
+			$error_message	= '';
+			$card_country	= '';
+			$client_country	= '';
+			$card_message	= '';
 			try
 			{
+				$message = '';
 				$response = $client->checkStatusWithOrderNumber($order_number);
 				if($response->source->object == "card")	{
 					
@@ -939,7 +1075,8 @@ class vismapay
 				case 0:
 					$success = true;
 					if($settled == 0)
-					{              
+					{     
+						define ('MODULE_PAYMENT_VISMAPAY_ORDER_STATUS_ID_AUTHORIZED','1');
 						$comment = MODULE_PAYMENT_VISMAPAY_PAYMENT_AUTHRORIZED; 
 						$status_id = MODULE_PAYMENT_VISMAPAY_ORDER_STATUS_ID_AUTHORIZED;
 						$is_settled = false;
@@ -993,13 +1130,11 @@ class vismapay
 
 	function after_process()
 	{
-		global $insert_id, $db;
-
+		global  $messageStack, $insert_id, $db, $order;
 		if(isset($_SESSION['vismapaygatway_order_comment']))
 		{
 			$comment = $_SESSION['vismapaygatway_order_comment'];
-			$comments = zen_db_prepare_input($comment);
-			$db->Execute("update " . TABLE_ORDERS_STATUS_HISTORY . " set comments = CONCAT(comments, '" . zen_db_input($comments) . "')  where orders_id = '" . $insert_id . "'");
+			zen_update_orders_history($insert_id, $comment, null, $order->info['order_status'], 3);			
 			unset($_SESSION['vismapaygatway_order_comment']);
 		}
 
@@ -1008,7 +1143,6 @@ class vismapay
 			if($_SESSION['vismapaygatway_order_status_id'] > 0)
 			{
 				$order_status_id = zen_db_input($_SESSION['vismapaygatway_order_status_id']);
-
 				$db->Execute("update " . TABLE_ORDERS . " set orders_status = '" . $order_status_id . "' where orders_id = '" . $insert_id . "'");
 				$db->Execute("update " . TABLE_ORDERS_STATUS_HISTORY . " set orders_status_id = $order_status_id  where orders_id = '" . $insert_id . "'");
 			}
@@ -1104,10 +1238,7 @@ class vismapay
 	{
 		$privatekey = $this->private_key;
 		$apikey = $this->api_key;
-		//include_once(dirname(__FILE__).'/vismapay-php-lib/visma_pay_loader.php');
-
 		$payment_methods = new VismaPay\VismaPay($apikey, $privatekey);
-
 		try
 		{
 			$response = $payment_methods->getMerchantPaymentMethods($currency);
@@ -1119,8 +1250,7 @@ class vismapay
 					$key = $method->selected_value;
 					if($method->group == 'creditcards')
 						$key = strtolower($method->name);
-
-					$this->vismapay_save_img($key, $method->img, $method->img_timestamp);
+						$this->vismapay_save_img($key, $method->img, $method->img_timestamp);
 
 					if($method->group == 'creditcards'  && $this->ccards == 'Enabled')
 					{
@@ -1153,8 +1283,6 @@ class vismapay
 	
 	private function vismapay_save_img($key, $img_url, $img_timestamp)
 	{
-		//require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/lib/visma_pay_loader.php';
-		
 		$img = require DIR_FS_CATALOG .DIR_WS_MODULES . 'payment/vismapay/assets/images/' .$key.'.png';
 		$timestamp = file_exists($img) ? filemtime($img) : 0;
 		if(!file_exists($img) || $img_timestamp > $timestamp)
@@ -1180,7 +1308,5 @@ class vismapay
 		}
 		return;
 	}	
-
 } // end class vismapay
-// This is Visma Pay Checkout Finland module signature
 ?>
